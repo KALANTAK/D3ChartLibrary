@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div id="demo"></div>
+    <div id="demo1"></div>
+    <div id="demo2"></div>
+    <div id="demo3"></div>
+    <div id="demo4"></div>
+    <script src="https://d3js.org/d3.v4.min.js">  </script>
+    <script>
+        class KalantakChart {
+            constructor(id, { type, data, color, width, height, label1, label2, animation, startcolor, endcolor, hover, click, columns, tooltip }) {
+                this.id = id;
+                this.type = type;
+                this.data = data;
+                this.color = color;
+                this.width = width;
+                this.height = height;
+                this.label1 = label1;
+                this.label2 = label2;
+                this.startcolor = startcolor;
+                this.endcolor = endcolor;
+                this.animation = animation;
+                this.hover = hover;
+                this.click = click;
+                this.columns = columns;
+                this.tooltip = tooltip;
+            }
+            makeBarChart() {
+                let first = this.label1;
+                let second = this.label2;
+                let ani = this.animation;
+                var color = d3.scaleOrdinal()
+                    .range(this.color)
+                if (this.type.toLowerCase() == "vertical bar chart") {
+                    var margin = { top: 30, right: 30, bottom: 70, left: 100 };
+                    var svg = d3.select("#demo")
+                        .append("svg")
+                        .attr("width", this.width + margin.left + margin.right)
+                        .attr("height", this.height + margin.top + margin.bottom)
+                    var g = svg.append("g")
+                        .attr("transform",
+                            "translate(" + margin.left + "," + margin.top + ")")
+                    var xscale = d3.scaleBand()
+                        .range([0, this.width])
+                        .padding(0.1)
+                    var yscale = d3.scaleLinear()
+                        .range([this.height, 0])
+                    var xaxis = g.append("g")
+                        .attr("transform", "translate( 0," + this.height + ")")
+                    var yaxis = g.append("g")
+                    xscale.domain(this.data.map(function (d) { return d[first]; }))
+                    yscale.domain([0, d3.max(this.data, function (d) { return Number(d[second]) })])
+                    color.domain([0, d3.max(this.data, d => Number(d[second]))])
+                    xaxis.call(d3.axisBottom(xscale))
+                    yaxis.call(d3.axisLeft(yscale))
+                    let h = this.height;
+                    let bars = g.selectAll("rect")
+                        .remove()
+                        .exit()
+                        .data(this.data)
+                    bars.enter()
+                        .append("rect")
+                        .attr("class", ".bars")
+                        .attr("x", function (d) { return xscale(d[first]); })
+                        .attr("width", xscale.bandwidth())
+                        .attr("height", function (d) { return h - yscale(d[second]) })
+                        .attr("y", function (d) { return yscale(d[second]); })
+                        .attr("fill", function (d, i) { return color(d[second]) })
+
+                }
+                else if (this.type.toLowerCase() == "horizontal bar chart") {
+                    var margin = { top: 30, right: 30, bottom: 70, left: 100 };
+                    var svg = d3.select("#demo")
+                        .append("svg")
+                        .attr("width", this.width + margin.left + margin.right)
+                        .attr("height", this.height + margin.top + margin.bottom)
+                    var g = svg.append("g")
+                        .attr("transform",
+                            "translate(" + margin.left + "," + margin.top + ")")
+                    var xscale = d3.scaleLinear()
+                        .range([0, this.width])
+                        .domain([0, d3.max(this.data, function (d) { return Number(d[second]) })])
+                    color.domain([0, d3.max(this.data, d => Number(d[second]))])
+                    g.append("g")
+                        .call(d3.axisBottom(xscale))
+                        .attr("transform", "translate(0," + this.height + ")")
+                    var yscale = d3.scaleBand()
+                        .domain(this.data.map(function (d) {
+                            return d[first];
+                        }))
+                        .range([0, this.height])
+                        .padding(0.1);
+                    g.append("g")
+                        .call(d3.axisLeft(yscale))
+                    let bars = g.selectAll("rect")
+                        .remove()
+                        .exit()
+                        .data(this.data)
+                    bars.enter()
+                        .append("rect")
+                        .attr("class", ".bars")
+                        .attr("x", xscale(0))
+                        .attr("height", yscale.bandwidth())
+                        .attr("width", function (d) { return xscale(d[second]) })
+                        .attr("y", function (d) { return yscale(d[first]) })
+                        .attr("fill", function (d, i) { return color(d[second]) })
+
+                }
+
+
+                else {
+                    alert("This is not your chart which you are looking for!");
+                }
+            }
+            makeMultiBarChart() {
+                let xlabel = this.label1;
+                let ylabel = this.label2;
+                let datas = this.data;
+
+                if (this.type.toLowerCase() == "vertical multibarchart stack" || this.type.toLowerCase() == "vertical multibarchart unstack") {
+                    var margin = { top: 30, right: 30, bottom: 70, left: 100 };
+                    let h = this.height;
+                    var svg = d3.select("#demo4")
+                        .append("svg")
+                        .attr("width", this.width + margin.left + margin.right)
+                        .attr("height", this.height + margin.top + margin.bottom)
+                    var g = svg.append("g")
+                        .attr("transform",
+                            "translate(" + margin.left + "," + margin.top + ")")
+                    var subgroups = this.columns;
+                    var groups = d3.map(datas, function (d) { return (d[xlabel]) }).keys()
+                    var x = d3.scaleBand()
+                        .domain(groups)
+                        .range([0, this.width])
+                        .padding([0.2])
+                    g.append("g")
+                        .attr("transform", "translate(0," + h + ")")
+                        .call(d3.axisBottom(x).tickSize(0));
+                    let keys = subgroups.slice(1);
+                    var y = d3.scaleLinear()
+                        .range([h, 0])
+                        .domain([0, (Math.ceil(d3.max(datas, function (d) { return d3.max(keys, function (key) { return d[key]; }); }) / 100) * 100)])
+                    g.append("g")
+                        .call(d3.axisLeft(y));
+                    var color = d3.scaleOrdinal()
+                        .domain(subgroups)
+                        .range(this.color)
+
+                    if (this.type.toLowerCase() == "vertical multibarchart stack") {
+                        var stackedData = d3.stack()
+                            .keys(keys)
+                            (datas)
+                        var tooltip =
+                            d3.select("#demo4")
+                                .append("div")
+                                .style("opacity", 0)
+                                .attr("class", "tooltip")
+                                .style("background-color", "white")
+                                .style("border", "solid")
+                                .style("border-width", "1px")
+                                .style("border-radius", "5px")
+                                .style("padding", "10px")
+                        var mouseover = function (d) {
+                            var subgroupName = d3.select(this.parentNode).datum().key;
+                            var subgroupValue = d.data[subgroupName];
+                            tooltip
+                                .html("subgroup: " + subgroupName + "<br>" + "Value: " + subgroupValue)
+                                .style("opacity", 1)
+                        }
+                        var mouseleave = function (d) {
+                            tooltip
+                                .style("opacity", 0)
+                        }
+                        g.append("g")
+                            .selectAll("g")
+                            .data(stackedData)
+                            .enter().append("g")
+                            .attr("fill", function (d) { return color(d.key); })
+                            .selectAll("rect")
+                            .data(function (d) { return d; })
+                            .enter().append("rect")
+                            .attr("x", function (d) { return x(d.data[xlabel]); })
+                            .attr("y", function (d) { return y(d[1]); })
+                            .attr("height", function (d) { ; return y(d[0]) - y(d[1]); })
+                            .attr("width", x.bandwidth())
+                        if (this.tooltip == true) {
+                            g.selectAll("rect")
+                                .on("mouseover", mouseover)
+                                .on("mouseleave", mouseleave)
+                        }
+                    }
+                    else if (this.type.toLowerCase() == "vertical multibarchart unstack") {
+                        var xSubgroup = d3.scaleBand()
+                            .domain(keys)
+                            .range([0, x.bandwidth()])
+                            .padding([0.05])
+                        var tooltip =
+                            d3.select("#demo4")
+                                .append("div")
+                                .style("opacity", 0)
+                                .attr("class", "tooltip")
+                                .style("background-color", "white")
+                                .style("border", "solid")
+                                .style("border-width", "1px")
+                                .style("border-radius", "5px")
+                                .style("padding", "10px")
+                        var mouseover = function (d) {
+                            var subgroup = d.key;
+                            var subgroup = d.value;
+                            tooltip
+                                .html("subgroup: " + subgroup + "<br>" + "Value: " + subgroup)
+                                .style("opacity", 1)
+                        }
+                        var mouseleave = function (d) {
+                            tooltip
+                                .style("opacity", 0)
+                        }
+                        g.append("g")
+                            .selectAll("g")
+                            .data(datas)
+                            .enter()
+                            .append("g")
+                            .attr("transform", function (d) { return "translate(" + x(d[xlabel]) + ",0)"; })
+                            .selectAll("rect")
+                            .data(function (d) { return keys.map(function (key) { return { key, value: d[key] }; }); })
+                            .enter().append("rect")
+                            .attr("x", function (d) { return xSubgroup(d.key); })
+                            .attr("y", function (d) { return y(d.value); })
+                            .attr("width", xSubgroup.bandwidth())
+                            .attr("height", function (d) { return h - y(d.value); })
+                            .attr("fill", function (d) { return color(d.key); })
+                        if (this.tooltip == true) {
+                            g.selectAll("rect")
+                                .on("mouseover", mouseover)
+                                .on("mouseleave", mouseleave)
+                        }
+                    }
+                }
+                else if (this.type.toLowerCase() == "horizontal multibarchart stack" || this.type.toLowerCase() == "horizontal multibarchart unstack") {
+                    var margin = { top: 30, right: 30, bottom: 70, left: 100 };
+                    let h = this.height;
+
+                    var svg = d3.select("#demo4")
+                        .append("svg")
+                        .attr("width", this.width + margin.left + margin.right)
+                        .attr("height", this.height + margin.top + margin.bottom)
+                    var g = svg.append("g")
+                        .attr("transform",
+                            "translate(" + margin.left + "," + margin.top + ")")
+                    var subgroups = this.columns;
+                    var color = d3.scaleOrdinal()
+                        .domain(subgroups)
+                        .range(this.color)
+                    var groups = d3.map(datas, function (d) { return (d[xlabel]) }).keys()
+                    var y = d3.scaleBand()
+                        .domain(groups)
+                        .range([0, this.height])
+                        .paddingInner(0.05)
+                    g.append("g")
+                        .call(d3.axisLeft(y).tickSize(0));
+                    let keys = subgroups.slice(1);
+                    var x = d3.scaleLinear()
+                        .domain([0, (Math.ceil(d3.max(datas, function (d) { return d3.max(keys, function (key) { return d[key]; }); }) / 100) * 100)])
+                        .range([0, this.width]);
+                    g.append("g")
+                        .attr("transform", "translate(0," + h + ")")
+                        .call(d3.axisBottom(x));
+
+                    if (this.type.toLowerCase() == "horizontal multibarchart stack") {
+                        var stackedData = d3.stack()
+                            .keys(keys)
+                            (datas)
+                        var tooltip =
+                            d3.select("#demo4")
+                                .append("div")
+                                .style("opacity", 0)
+                                .attr("class", "tooltip")
+                                .style("background-color", "white")
+                                .style("border", "solid")
+                                .style("border-width", "1px")
+                                .style("border-radius", "5px")
+                                .style("padding", "10px")
+                        var mouseover = function (d) {
+                            var subgroupName1 = d3.select(this.parentNode).datum().key;
+                            var subgroupValue1 = d.data[subgroupName1];
+                            tooltip
+                                .html("subgroup: " + subgroupName1 + "<br>" + "Value: " + subgroupValue1)
+                                .style("opacity", 1)
+                        }
+                        var mouseleave = function (d) {
+                            tooltip
+                                .style("opacity", 0)
+                        }
+                        g.append("g")
+                            .selectAll("g")
+                            .data(stackedData)
+                            .enter().append("g")
+                            .attr("fill", function (d) { return color(d.key); })
+                            .selectAll("rect")
+                            .data(function (d) { return d; })
+                            .enter().append("rect")
+                            .attr("y", function (d) { return y(d.data[xlabel]); })
+                            .attr("x", function (d) { return x(d[0]); })
+                            .attr("width", function (d) { ; return x(d[1]) - x(d[0]); })
+                            .attr("height", y.bandwidth())
+                        if (this.tooltip == true) {
+                            g.selectAll("rect")
+                                .on("mouseover", mouseover)
+                                .on("mouseleave", mouseleave)
+                        }
+                    }
+                    else if (this.type.toLowerCase() == "horizontal multibarchart unstack") {
+                        var y1 = d3.scaleBand()
+                            .domain(keys)
+                            .range([y.bandwidth(), 0])
+                            .padding(0.05)
+                        var tooltip =
+                            d3.select("#demo4")
+                                .append("div")
+                                .style("opacity", 0)
+                                .attr("class", "tooltip")
+                                .style("background-color", "white")
+                                .style("border", "solid")
+                                .style("border-width", "1px")
+                                .style("border-radius", "5px")
+                                .style("padding", "10px")
+                        var mouseover = function (d) {
+                            var subgroupName2 = d.key;
+                            var subgroupValue2 = d.value;
+                            tooltip
+                                .html("subgroup: " + subgroupName2 + "<br>" + "Value: " + subgroupValue2)
+                                .style("opacity", 1)
+                        }
+                        var mouseleave = function (d) {
+                            tooltip
+                                .style("opacity", 0)
+                        }
+                        g.append("g")
+                            .selectAll("g")
+                            .data(datas)
+                            .enter()
+                            .append("g")
+                            .attr("transform", function (d) { return "translate(0 ," + y(d[xlabel]) + ")"; })
+                            .selectAll("rect")
+                            .data(function (d) { return keys.map(function (key) { return { key, value: d[key] }; }); })
+                            .enter().append("rect")
+                            .attr("x", function (d) { return x(0) })
+                            .attr("y", function (d) { return y1(d.key); })
+                            .attr("height", y1.bandwidth())
+                            .attr("width", function (d) { return x(d.value) - x(0); })
+                            .attr("fill", function (d) { return color(d.key); })
+                        if (this.tooltip == true) {
+                            g.selectAll("rect")
+                                .on("mouseover", mouseover)
+                                .on("mouseleave", mouseleave)
+                        }
+                    }
+                }
+                else {
+                    alert("This is not your chart which you are looking for!");
+                }
+            }
+            makeSunChart() {
+                if (this.type.toLowerCase() == "sunburst") {
+                    var radius = Math.min(this.width, this.height) / 2;
+                    const x = d3.scaleLinear()
+                        .range([0, 2 * Math.PI])
+                        .clamp(true);
+                    const y = d3.scaleSqrt()
+                        .range([radius * .1, radius]);
+                    const color = d3.scaleOrdinal(d3.schemeCategory10)
+                        .range(this.color);
+                    const middleArcLine = d => {
+                        const halfPi = Math.PI / 2;
+                        const angles = [x(d.x0) - halfPi, x(d.x1) - halfPi];
+                        const r = Math.max(0, (y(d.y0) + y(d.y1)) / 2);
+                        const middleAngle = (angles[1] + angles[0]) / 2;
+                        const invertDirection = middleAngle > 0 && middleAngle < Math.PI;
+                        if (invertDirection) { angles.reverse(); }
+                        const path = d3.path();
+                        path.arc(0, 0, r, angles[0], angles[1], invertDirection);
+                        return path.toString();
+                    };
+                    const textFits = d => {
+                        const CHAR_SPACE = 6;
+                        const deltaAngle = x(d.x1) - x(d.x0);
+                        const r = Math.max(0, (y(d.y0) + y(d.y1)) / 2);
+                        const perimeter = r * deltaAngle;
+                        return d.data.name.length * CHAR_SPACE < perimeter;
+                    };
+                    var g = d3.select("#demo1")
+                        .append("svg")
+                        .attr('width', this.width)
+                        .attr('height', this.height)
+                        .append('g')
+                        .on("click", () => onclick)
+                        .attr('transform', 'translate(' + this.width / 2 + ',' + this.height / 2 + ')');
+
+                    var partition = d3.partition()
+                    var arc = d3.arc()
+                        .startAngle(d => x(d.x0))
+                        .endAngle(d => x(d.x1))
+                        .innerRadius(d => Math.max(0, y(d.y0)))
+                        .cornerRadius(99)
+                        .outerRadius(d => Math.max(0, y(d.y1)));
+                    var root = d3.hierarchy(this.data)
+                    root.sum(function (d) {
+                        return d.size;
+                    });
+                    let newdata = g.selectAll("path")
+                        .data(partition(root).descendants())
+                    const neww = newdata.enter()
+                        .append("g")
+                        .attr("class", "slice")
+                        .attr("cursor", "pointer")
+                    if (this.click == true) {
+                        g.selectAll("g")
+                            .on('click', d => this.onclick(d, x, y, middleArcLine, textFits, g, arc))
+                    }
+                    if (this.hover == true) {
+                        g.selectAll("g")
+                            .on("mouseover", d => this.mouseover(d))
+                            .on("mouseout", d => this.mouseout(d))
+                    }
+
+                    neww.append("path")
+                        .attr('class', 'firstarc')
+                        .style('fill', d => color((d.children ? d : d.parent).data.name))
+                        .attr('d', arc)
+                    neww.append('path')
+                        .attr('class', 'hidden-arc')
+                        .attr('id', (_, i) => `hiddenArc${i}`)
+                        .attr('d', middleArcLine);
+
+                    neww.append("title")
+                        .text(function (d) { return "Name : " + d.data.name })
+                    let text = neww.append("text")
+                        .attr('display', d => textFits(d) ? null : 'none');
+                    text.append('textPath')
+                        .attr('startOffset', '50%')
+                        .attr('xlink:href', (_, i) => `#hiddenArc${i}`)
+                        .text(d => d.data.name)
+                        .style('fill', 'none')
+                        .style('stroke', '#fff')
+                        .style('stroke-width', 5)
+                        .style('stroke-linejoin', 'round');
+
+                    text.append('textPath')
+                        .attr('startOffset', '50%')
+                        .attr('xlink:href', (_, i) => `#hiddenArc${i}`)
+                        .text(d => d.data.name)
+                }
+                else {
+                    alert("This is not your chart which you are looking for!");
+                }
+
+            }
+            makeLineChart() {
+                if (this.type.toLowerCase() == "linechart") {
+                    var lineStroke = "1.5px";
+                    var lineStrokeHover = "2.5px";
+                    let xlabel = this.label1;
+                    let ylabel = this.label2;
+                    let datas = this.data;
+                    var margin = { top: 50, right: 50, bottom: 50, left: 50 };
+                    var svg = d3.select("#demo2").append("svg")
+                        .attr("width", this.width + margin.left + margin.right)
+                        .attr("height", this.height + margin.top + margin.bottom)
+                        .append("g")
+                        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+                    datas.forEach(function (d) {
+                        d[xlabel] = d3.timeParse("%d-%b-%y")(d[xlabel]);
+                        d[ylabel] = +d[ylabel];
+                    });
+
+                    const max = d3.max(datas, function (d) { return d[ylabel]; })
+                    var x = d3.scaleTime()
+                        .domain(d3.extent(datas, function (d) { return d[xlabel]; }))
+                        .range([0, this.width])
+                    svg.append("g")
+                        .attr("transform", "translate( 0," + this.height + ")")
+                        .call(d3.axisBottom(x))
+                    var y = d3.scaleLinear()
+                        .domain([0, d3.max(this.data, function (d) { return +d[ylabel]; })])
+                        .range([this.height, 0])
+                    svg.append("g")
+                        .call(d3.axisLeft(y))
+                    svg.append("path")
+                        .datum(datas)
+                        .attr("fill", "none")
+                        .attr("stroke", "url(#line-gradient)")
+                        .attr("stroke-width", 1.5)
+                        .style('opacity', 0.5)
+                        .attr("d", d3.line()
+                            .x(function (d) { return x(d[xlabel]); })
+                            .y(function (d) { return y(d[ylabel]); }))
+                    if (this.hover == true) {
+                        svg.selectAll("path")
+                            .on("mouseover", function (d) {
+                                d3.selectAll('.line')
+                                    .style('opacity', "0.1")
+                                d3.select(this)
+                                    .style('opacity', 1.0)
+                                    .style("stroke-width", lineStrokeHover)
+                                    .style("cursor", "pointer");
+                            })
+                            .on("mouseout", function (d) {
+                                d3.selectAll(".line")
+                                    .style('opacity', 0.1)
+                                d3.select(this)
+                                    .style('opacity', 0.5)
+                                    .style("stroke-width", lineStroke)
+                                    .style("cursor", "none");
+                            });
+                    }
+                    svg.append("linearGradient")
+                        .attr("id", "line-gradient")
+                        .attr("gradientUnits", "userSpaceOnUse")
+                        .attr("x1", 0)
+                        .attr("y1", y(0))
+                        .attr("x2", 0)
+                        .attr("y2", y(max))
+                        .selectAll("stop")
+                        .data([
+                            { offset: "0%", color: this.startcolor },
+                            { offset: "100%", color: this.endcolor }
+                        ])
+                        .enter().append("stop")
+                        .attr("offset", function (d) { return d.offset; })
+                        .attr("stop-color", function (d) { return d.color; })
+                    if (this.animation == true) {
+                        svg.selectAll("path")
+                            .transition()
+                            .duration(5000)
+                            .attrTween("stroke-dasharray", this.tween)
+                    }
+                }
+                else {
+                    alert("This is not your chart which you are looking for!");
+                }
+            }
+            makeMultiLineChart() {
+                if (this.type.toLowerCase() == "multilinechart") {
+                    var lineStroke = "1.5px";
+                    var lineStrokeHover = "2.5px";
+                    let xlabel = this.label1;
+                    let ylabel = this.label2;
+                    let datas = this.data;
+                    var margin = { top: 50, right: 50, bottom: 50, left: 50 };
+                    var svg = d3.select("#demo3").append("svg")
+                        .attr("width", this.width + margin.left + margin.right)
+                        .attr("height", this.height + margin.top + margin.bottom)
+                        .append("g")
+                        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+                    datas.forEach(function (d) {
+                        d.values.forEach(function (d) {
+                            d[xlabel] = d3.timeParse("%Y")(d[xlabel]);
+                            d[ylabel] = +d[ylabel];
+                        })
+                    });
+                    var x = d3.scaleTime()
+                        .domain(d3.extent(datas[0].values, d => d[xlabel]))
+                        .range([0, this.width])
+                    svg.append("g")
+                        .attr("transform", "translate( 0," + this.height + ")")
+                        .call(d3.axisBottom(x))
+                    var color = d3.scaleOrdinal(d3.schemeCategory10)
+                        .range(this.color);
+                    var y = d3.scaleLinear()
+                        .domain([0, d3.max(datas[0].values, d => d[ylabel])])
+                        .range([this.height, 0])
+                    svg.append("g")
+                        .call(d3.axisLeft(y))
+                    var line = d3.line()
+                        .x(d => x(d[xlabel]))
+                        .y(d => y(d[ylabel]));
+
+                    svg.append("g")
+                        .attr('class', 'lines');
+                    svg.selectAll('.line-group')
+                        .data(datas).enter()
+                        .append('g')
+                        .attr('class', 'line-group')
+                        .append('path')
+                        .style('stroke', (d, i) => color(i))
+                        .attr('d', d => line(d.values))
+                        .attr("stroke-width", 1.5)
+                        .attr("fill", "none")
+                        .style('opacity', 0.5)
+                    if (this.hover == true) {
+                        svg.selectAll('.line-group')
+                            .on("mouseover", function (d, i) {
+                                d3.selectAll('.line')
+                                    .style('opacity', "0.1")
+                                d3.select(this)
+                                    .style('opacity', 1.0)
+                                    .style("stroke-width", lineStrokeHover)
+                                    .style("cursor", "pointer");
+                            })
+                            .on("mouseout", function (d) {
+                                d3.selectAll(".line")
+                                    .style('opacity', 0.1)
+                                d3.select(this)
+                                    .style('opacity', 0.5)
+                                    .style("stroke-width", lineStroke)
+                                    .style("cursor", "none");
+                            });
+                    }
+                    if (this.animation == true) {
+                        svg.selectAll("path")
+                            .transition()
+                            .duration(5000)
+                            .attrTween("stroke-dasharray", this.tween)
+                    }
+                }
+                else {
+                    alert("This is not your chart which you are looking for!");
+                }
+            }
+
+            tween() {
+                const l = this.getTotalLength(),
+                    i = d3.interpolateString("0," + l, l + "," + l);
+                return function (t) { return i(t) };
+            }
+            onclick(d = { x0: 0, x1: 1, y0: 0, y1: 1 }, x, y, middleArcLine, textFits, g, arc) {
+                const transition = g.transition()
+                    .duration(750)
+                    .tween('scale', () => {
+                        const xd = d3.interpolate(x.domain(), [d.x0, d.x1]),
+                            yd = d3.interpolate(y.domain(), [d.y0, 1]);
+                        return t => { x.domain(xd(t)); y.domain(yd(t)); };
+                    });
+                transition.selectAll('path.firstarc')
+                    .attrTween('d', d => () => arc(d));
+                transition.selectAll('path.hidden-arc')
+                    .attrTween('d', d => () => middleArcLine(d));
+                transition.selectAll('text')
+                    .attrTween('display', d => () => textFits(d) ? null : 'none');
+            }
+            mouseover(d) {
+                var sequence = this.child(d);
+                d3.selectAll("path")
+                    .style("opacity", 0.3);
+                d3.selectAll("path")
+                    .filter(function (node) {
+                        return (sequence.indexOf(node) >= 0);
+                    })
+                    .style("opacity", 1);
+            }
+            mouseout() {
+                d3.selectAll("path")
+                    .style("opacity", 1)
+            }
+            child(node) {
+                var path = [];
+                var current = node;
+                while (current.parent) {
+                    path.unshift(current);
+                    current = current.parent;
+                }
+                return path;
+            }
+        }
+        // let id = document.getElementById("demo");
+        // let chart = new KalantakChart(id,
+        //     {
+        //         type: "vertical bar chart",
+        //         data: [
+        //             { country: "United States", value: "6500" },
+        //             { country: "Russia", value: "6148" },
+        //             { country: "Germany (FRG)", value: "1653" },
+        //             { country: "France", value: "2162" },
+        //             { country: "United Kingdom", value: "1000" },
+        //             { country: "China", value: "12000" },
+        //             { country: "Spain", value: "7500" },
+        //             { country: "Netherlands", value: "1167" },
+        //             { country: "Italy", value: "6606" },
+        //             { country: "Israel", value: "1263" },
+        //             { country: "india", value: "8000" },
+        //         ],
+        //         color: ["#6b486b", "#a05d56", "#d0743c", "#ff8c00"],
+        //         width: 1000,
+        //         height: 700,
+        //         label1: "country",
+        //         label2: "value"
+        //     });
+        // chart.makeBarChart()
+
+
+
+        // let id2 = document.getElementById("demo1");
+        // let sunburst = new KalantakChart(id2,
+        //     {
+        //         type: "sunburst",
+        //         data: {
+        //             "name": "TOPICS", "children": [{
+        //                 "name": "Topic A",
+        //                 "children": [{ "name": "Sub A1", "size": 4 }, { "name": "Sub A2", "size": 4 }]
+        //             }, {
+        //                 "name": "Topic B",
+        //                 "children": [{ "name": "Sub B1", "size": 3 }, { "name": "Sub B2", "size": 3 }, {
+        //                     "name": "Sub B3", "size": 3
+        //                 }]
+        //             }, {
+        //                 "name": "Topic C",
+        //                 "children": [{ "name": "Sub A1", "size": 4 }, { "name": "Sub A2", "size": 4 }]
+        //             }]
+        //         },
+        //         width: 1500,
+        //         height: 750,
+        //         color: ["pink", "#a05d56", "#d0743c", "#ff8c00"],
+        //         hover: false,
+        //         click: true,
+        //     });
+        // sunburst.makeSunChart()
+
+
+
+        // let id5 = document.getElementById("demo4");
+        // let multidatabar = new KalantakChart(
+        //     id5,
+        //     {
+        //         type: "horizontal MULTIBARCHART STACK",
+        //         data: [
+        //             { group: 'banana', nitrogen: 12, normal: 1, stress: 13, },
+        //             { group: 'poacee', nitrogen: 6, normal: 6, stress: 33, },
+        //             { group: 'sorgho', nitrogen: 11, normal: 28, stress: 12, },
+        //             { group: 'triticum', nitrogen: 19, normal: 6, stress: 1, },
+
+        //         ],
+        //         width: 1050,
+        //         height: 850,
+        //         label1: "group",
+        //         color: ["#6b486b", "#a05d56", "#d0743c", "#ff8c00"],
+        //         columns: ['group', 'nitrogen', 'normal', 'stress'],
+        //         tooltip: true,
+        //     });
+        // multidatabar.makeMultiBarChart();
+
+
+        // let id3 = document.getElementById("demo2");
+        // let linechart = new KalantakChart(id3,
+        //     {
+        //         type: "linechart",
+        //         data: [
+        //             { date: "9-Apr-12", close: "53.98" },
+        //             { date: "10-Apr-12", close: " 77.98" },
+        //             { date: "11-Apr-12", close: "67.00" },
+        //             { date: "12-Apr-12", close: "89.70" },
+        //             { date: "13-Apr-12", close: "99.00" },
+        //             { date: "14-Apr-12", close: "130.28" },
+        //             { date: "15-Apr-12", close: "166.70" },
+        //             { date: "16-Apr-12", close: "234.98" },
+        //             { date: "17-Apr-12", close: "345.44" },
+        //             { date: "18-Apr-12", close: "443.34" },
+        //             { date: "19-Apr-12", close: "543.70" },
+        //             { date: "20-Apr-12", close: " 580.13" },
+        //             { date: "21-Apr-12", close: "605.23" },
+        //             { date: "22-Apr-12", close: "622.77" },
+        //             { date: "23-Apr-12", close: " 626.20" },
+        //         ],
+        //         width: 1000,
+        //         height: 550,
+        //         label1: "date",
+        //         label2: "close",
+        //         animation: true,
+        //         startcolor: "yellow",
+        //         endcolor: "red",
+        //         hover: true,
+        //     });
+        // linechart.makeLineChart()
+
+        let id4 = document.getElementById("demo3");
+        let multilinechart = new KalantakChart(id4,
+            {
+                type: "multilinechart",
+                data: [
+                    {
+                        name: "USA",
+                        values: [
+                            { date: "2000", price: "100" },
+                            { date: "2001", price: "110" },
+                            { date: "2002", price: "145" },
+                            { date: "2003", price: "241" },
+                            { date: "2004", price: "101" },
+                            { date: "2005", price: "90" },
+                            { date: "2006", price: "10" },
+                            { date: "2007", price: "35" },
+                            { date: "2008", price: "21" },
+                            { date: "2009", price: "201" }
+                        ]
+                    },
+                    {
+                        name: "Canada",
+                        values: [
+                            { date: "2000", price: "200" },
+                            { date: "2001", price: "120" },
+                            { date: "2002", price: "33" },
+                            { date: "2003", price: "21" },
+                            { date: "2004", price: "51" },
+                            { date: "2005", price: "190" },
+                            { date: "2006", price: "120" },
+                            { date: "2007", price: "85" },
+                            { date: "2008", price: "221" },
+                            { date: "2009", price: "101" }
+                        ]
+                    },
+                    {
+                        name: "Maxico",
+                        values: [
+                            { date: "2000", price: "50" },
+                            { date: "2001", price: "10" },
+                            { date: "2002", price: "5" },
+                            { date: "2003", price: "71" },
+                            { date: "2004", price: "20" },
+                            { date: "2005", price: "9" },
+                            { date: "2006", price: "220" },
+                            { date: "2007", price: "235" },
+                            { date: "2008", price: "61" },
+                            { date: "2009", price: "10" }
+                        ]
+                    }
+                ],
+                width: 1000,
+                height: 550,
+                label1: "date",
+                label2: "price",
+                color: ["#6b486b", "#a05d56", "#d0743c", "#ff8c00"],
+                animation: true,
+                hover: true,
+            });
+        multilinechart.makeMultiLineChart()
+
+    </script>
+</body>
+
+</html>
